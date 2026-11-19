@@ -1,0 +1,9 @@
+dataset,transformation,reason
+Supply / Use / PHL withdrawal,Column names -> lowercase_with_underscores,"Consistent, easy-to-use variable names"
+Supply / Use / PHL withdrawal,year -> Int64,Consistent integer key for merging
+Water Use Efficiency (WS 3),"Annual rows extracted, columns named, converted to numeric",Worksheet has title/header/notes rows
+Water Stress (WS 4),"Annual rows extracted, columns named, converted to numeric",Worksheet has title/header/notes rows
+PHL industrial withdrawal,"withdrawal_mcm = industrial_water_withdrawal / 1,000,000",Convert m3 to million m3 so the unit matches PSA tables (after unit confirmation)
+Water Stress (WS 4),water_stress_percentage = water_stress * 100,Presentation only; original ratio retained
+PSA Supply / Use,"Extracted exact 'TOTAL SUPPLY' and 'TOTAL USE' rows (total_supply, total_use)",National annual totals; aggregates and components kept distinct
+Annual master,"Outer-joined supply/use totals, OWID withdrawal, WUE and water stress on year",Preserve all years; gaps indicate a source has no observation for that year
