@@ -1,10 +1,14 @@
-# Classifying Philippine Household Personal Care & Lifestyle Spending Tiers Using Machine Learning
+# Assessing Water Scarcity and Industrial Water Demand in the Philippines Through Data Mining: Implications for Future Industrial Development Under the Pax Silica Initiative
 
-**Author:** Trisha A. Biglete
+**Authors:** Casugbo, Marc Angelo D. · Milca, Jon Joshua Leonardo B. · Pongos, Auxi Nicole Z.
 
 **Program:** BSCS - J3A
 
 **Course:** Data Mining Capstone
+
+**Submitted to:** Prof. Grachel Eliza C. Greta
+
+**Date:** November 2026
 
 ---
 
@@ -12,408 +16,354 @@
 
 | File / Folder | Description |
 |---|---|
-| `DataMining_FinCapstone_Biglete.ipynb` | Main Jupyter Notebook — full Python pipeline (Google Colab) |
-| `DataMining_Capstone.ows` | Orange Data Mining workflow file (visual dual-tool pipeline) |
-| `Family Income and Expenditure.csv` | Raw PSA FIES dataset (41,544 households, 60 attributes) |
-| `fies_cleaned_processed.csv` | Cleaned & feature-engineered dataset exported from the notebook (16 columns) |
-| `Images/bigquery_pipeline.png` | Screenshot of the Google BigQuery SQL pipeline |
-| `Images/eda_distributions.png` | EDA visualizations — expenditure distribution + income boxplot by tier |
-| `Images/feature_importance.png` | Random Forest top-10 feature importance bar chart |
-| `Images/confusion_matrix.png` | Python (scikit-learn) Random Forest confusion matrix heatmap |
-| `Images/orange_workflow.png` | Orange Data Mining visual workflow screenshot |
-| `Images/orange_test_and_score.png` | Orange Test and Score results (all four models, 10-fold CV) |
-| `Images/orange_roc_analysis.png` | Orange ROC Analysis curves for all four models |
-| `Images/orange_confusion_matrix.png` | Orange Confusion Matrix for the Random Forest model |
-| `Images/orange_tree_viewer.png` | Orange Decision Tree Viewer — top-3-level tree structure |
+| `Original Datasets/` | Raw source files as downloaded from PSA and Our World in Data |
+| `Data Understanding/Philippine_Water_Data_Understanding.ipynb` | Google Colab notebook for the initial inspection (structure, data types, missing values, duplicates, unusual values) |
+| `Cleaned Datasets/` | Cleaned and integrated CSV files produced during preprocessing (see Section 3) |
+| `EDA/EXPLORATORY_DATA_ANALYSIS.ipynb` | Google Colab notebook for exploratory data analysis |
+| `Data Mining Models/Data Mining Techniques.ipynb` | Google Colab notebook for IQR anomaly detection, plus supporting trend and correlation analysis |
+| `Images/` | Figures produced in Google Colab (listed below) |
+| `Documentation/` | Full written capstone documentation (`CAPSTONE - Documentation.pdf`, 70 pages) |
+| `Water_Resources_DataMining_Architecture.ows` | Orange Data Mining workflow (data inspection, visualization, correlation, and IQR anomaly detection) |
+
+### Figures in `Images/`
+
+| File | Content |
+|---|---|
+| `annual_total_water_supply.png` | Annual total water supply, 2010–2025 |
+| `annual_total_water_use.png` | Annual total water use, 2010–2025 |
+| `water_utilization_by_sector.png` | Annual water utilization by economic sector |
+| `average_water_utilization_by_sector.png` | Average water utilization by economic sector |
+| `industrial_water_withdrawal.png` | Philippine industrial water withdrawal, 1995–2023 |
+| `industrial_wue.png` | Industrial water-use efficiency, 2016–2025 |
+| `wue_by_sector.png` | Water-use efficiency by sector (Agriculture, Industry, Services) |
+| `national_water_stress.png` | National water stress, 2016–2025 |
+| `iqr_boxplot_industrial_withdrawal.png` | IQR box plot, industrial water withdrawal |
+| `iqr_boxplot_industrial_wue.png` | IQR box plot, industrial water-use efficiency |
+| `correlation_heatmap_2016_2023.png` | Pearson correlation heatmap, common period 2016–2023 |
 
 ---
 
 ## 1. Executive Summary & Problem Definition
 
-### Problem Statement
+### Background
 
-Philippine households allocate a portion of their income to **Miscellaneous Goods and Services** — a category that encompasses personal care products, cosmetics, toiletries, and lifestyle expenditures. Despite representing a key market segment for fast-moving consumer goods (FMCG) and retail sectors, the socio-economic determinants that separate **High Spenders** from **Low Spenders** in this category remain poorly understood at the household level.
+Water supports households, agriculture, and industry. The Philippine Statistics Authority (PSA) reported a national water-stress level of 31.1% in 2025, up from 28.5% in 2024. This remains within the FAO's low-stress range (25–50%), but the increase shows why freshwater withdrawals need monitoring. The proposed Pax Silica development in New Clark City, Capas, Tarlac, which is intended to host semiconductor and advanced manufacturing facilities, is the application context for this study.
 
-This project frames the problem as a **binary classification task**: given 15 socio-economic and demographic features drawn from the Philippine Statistics Authority (PSA) Family Income and Expenditure Survey (FIES), can a machine learning model accurately classify a household as a High or Low Personal Care & Lifestyle spender?
+This study analyzes historical **national-level** indicators. It does **not** measure Pax Silica's actual water requirements, and it does not determine the water availability of the project site.
+
+### Statement of the Problem
+
+1. How have water supply and water utilization in the Philippines changed over the available years?
+2. What trends can be observed in industrial water withdrawal and water-use efficiency?
+3. How has the national level of water stress changed over the available period?
+4. What patterns and relationships exist among water supply, water utilization, industrial water withdrawal, and water-stress indicators?
+5. What data-driven recommendations can support sustainable water-resource management in view of future industrial development under the Pax Silica initiative?
 
 ### Objectives
 
-1. Engineer a balanced binary target variable (`Spending_Tier`) from the FIES Miscellaneous Goods and Services Expenditure column using a median split.
-2. Build and compare four classification algorithms — Random Forest, Decision Tree, k-NN, and Naïve Bayes — across both a **Python scikit-learn pipeline** and an **Orange Data Mining visual workflow**.
-3. Identify the top socio-economic drivers of personal care and lifestyle spending to yield actionable insights.
+1. Examine historical patterns in water supply and water utilization.
+2. Analyze trends in industrial water withdrawal and water-use efficiency.
+3. Assess changes in national water stress.
+4. Apply **IQR-based anomaly detection** as the primary data mining technique, supported by trend and correlation analysis.
+5. Evaluate and interpret results using appropriate measures and visualizations.
+6. Develop data-driven recommendations for sustainable water management and industrial planning.
 
 ### Target Stakeholders
 
 | Stakeholder | Relevance |
 |---|---|
-| FMCG & Retail Marketers | Segment targeting, product positioning, and regional campaign prioritization |
-| Consumer Economists | Understanding discretionary spending behavior across income strata |
-| Policy Researchers | Informing social protection design and household consumption monitoring |
-
-### Context
-
-The Philippines presents a distinctive household consumption landscape. The PSA FIES remains the primary national instrument for measuring income distribution and expenditure patterns across all 17 administrative regions (Philippine Statistics Authority, 2023). Albert et al. (2020) document significant income polarization across Philippine households, particularly in the context of COVID-19, underscoring how non-food expenditure — including personal care — is highly sensitive to household income and demographic structure.
+| Government agencies and policymakers | Supplementary evidence for water-resource planning |
+| Industrial planners and developers | Historical context on industrial demand and efficiency |
+| Environmental and water-resource researchers | Reference for Philippine water data and for data mining on environmental datasets |
+| Students and future researchers | Worked example of data mining on public datasets |
+| General public | Awareness of responsible water use |
 
 ---
 
-## 2. Dataset & Cloud Data Engineering (BigQuery)
+## 2. Datasets & Data Acquisition
 
-### Dataset: PSA Family Income and Expenditure Survey (FIES)
+All data are secondary, publicly available sources. **No cloud data warehouse was used.** Preparation and analysis were done in **Google Colab (Python)** and **Orange Data Mining**.
 
-| Attribute | Value |
-|---|---|
-| **Source** | Philippine Statistics Authority (PSA) via Kaggle (Grosven, 2018) |
-| **Records** | 41,544 household observations |
-| **Original Features** | 60 attributes |
-| **Coverage** | All 17 administrative regions of the Philippines |
-| **Target Column** | `Miscellaneous Goods and Services Expenditure` (annual, in PHP) |
-
-The dataset captures annual household-level expenditure across food, housing, transport, education, communication, healthcare, clothing, restaurant, and miscellaneous goods categories, alongside demographic information such as household head age, family size, and employment status.
-
-### Google BigQuery Cloud Pipeline
-
-To demonstrate cloud-scale data engineering, the FIES dataset was ingested into **Google BigQuery** under the project `datamining-fincapstone-biglete`, dataset `fies_data`, table `household_expenditure`. A SQL query was executed to extract key features and classify households in-cloud using a `CASE WHEN` expression mirroring the median-split threshold (₱6,804):
-
-```sql
-SELECT
-    Region,
-    `Total Household Income` AS Total_Income,
-    `Clothing_ Footwear and Other Wear Expenditure` AS Clothing_Spend,
-    `Communication Expenditure` AS Communication_Spend,
-    `Miscellaneous Goods and Services Expenditure` AS Personal_Care_Spend,
-    CASE
-        WHEN `Miscellaneous Goods and Services Expenditure` >= 6804 THEN 'High Spender'
-        ELSE 'Low Spender'
-    END AS Spending_Tier
-FROM
-    `{project_id}.fies_data.household_expenditure`
-```
-
-![BigQuery Pipeline](Images/bigquery_pipeline.png)
-
-The BigQuery pipeline confirms end-to-end cloud compatibility of the classification logic, enabling scalable real-time scoring of incoming FIES-structured household records.
-
----
-
-## 3. Data Preprocessing & Exploratory Data Analysis (EDA)
-
-### Missing Value Audit
-
-A full audit of the 41,544-record dataset confirmed **zero missing values** across all 60 original attributes. No imputation was required.
-
-```
---- Missing Values Audit ---
-No missing values found!
-```
-
-### Feature Selection
-
-Fifteen socio-economic and demographic features were selected from the 60 original attributes based on domain relevance to personal care and lifestyle spending:
-
-| # | Feature | Type |
-|---|---|---|
-| 1 | Region | Categorical (17 regions) |
-| 2 | Total Household Income | Continuous |
-| 3 | Total Food Expenditure | Continuous |
-| 4 | Clothing, Footwear and Other Wear Expenditure | Continuous |
-| 5 | Education Expenditure | Continuous |
-| 6 | Communication Expenditure | Continuous |
-| 7 | Transportation Expenditure | Continuous |
-| 8 | Restaurant and hotels Expenditure | Continuous |
-| 9 | Special Occasions Expenditure | Continuous |
-| 10 | Medical Care Expenditure | Continuous |
-| 11 | Housing and water Expenditure | Continuous |
-| 12 | Household Head Age | Continuous |
-| 13 | Total Number of Family Members | Continuous |
-| 14 | Members with age less than 5 year old | Continuous |
-| 15 | Total number of family members employed | Continuous |
-
-### Target Engineering: Spending_Tier
-
-The binary target `Spending_Tier` was engineered using a **median split** on the `Miscellaneous Goods and Services Expenditure` column:
-
-| Statistic | Value |
-|---|---|
-| Mean | ₱12,522.07 |
-| Median (split threshold) | **₱6,804.00** |
-| Std Dev | ₱17,547.03 |
-| Min | ₱0.00 |
-| Max | ₱553,560.00 |
-
-```
-Target Threshold (Median): ₱6,804.00
-Selected 15 features successfully!
-
---- Target Class Balance ---
-Spending_Tier
-1    50.04%   ← High Spender (Miscellaneous spend ≥ ₱6,804)
-0    49.96%   ← Low Spender  (Miscellaneous spend < ₱6,804)
-```
-
-The median split yields a **near-perfectly balanced** binary class distribution (50.04% High / 49.96% Low), which eliminates class-imbalance bias in model training and evaluation.
-
-### Encoding & Scaling
-
-- **One-Hot Encoding**: The categorical `Region` column (17 Philippine administrative regions) was one-hot encoded via `pd.get_dummies`, expanding the feature matrix from 15 to 30 columns.
-- **Feature Scaling**: All continuous features were standardized using `StandardScaler` (Z-score normalization) to ensure distance-based algorithms (k-NN) and tree-based algorithms operate on a common scale.
-
-```
-Preprocessing Complete!
-Features Shape after One-Hot Encoding: 41544 rows, 30 columns
-```
-
-### EDA Visualizations
-
-![EDA Distributions](Images/eda_distributions.png)
-
-The two-panel EDA figure reveals critical distributional properties:
-
-**Left Panel — Distribution of Personal Care & Lifestyle Expenditure:**
-The expenditure distribution is **strongly right-skewed**, with the vast majority of households spending under ₱20,000 annually. The distribution peaks sharply near ₱0–₱5,000, with a long tail extending to ₱553,560. The red dashed line at ₱6,804 (the median cutoff) sits near the first major inflection point of the distribution, confirming it is a sensible and statistically justified split threshold.
-
-**Right Panel — Total Household Income vs. Spending Tier:**
-The boxplot demonstrates a **clear income stratification** between tiers. High Spender households (Tier 1) show markedly higher median annual household income (~₱290,000) compared to Low Spenders (Tier 0, median ~₱110,000). The interquartile range of High Spenders also extends much further (~₱200,000–₱430,000 vs. ~₱70,000–₱140,000), confirming that **household income is a strong discriminating signal** for personal care spending tier classification.
-
----
-
-## 4. Data Mining Methodology & Dual-Tool Implementation
-
-### Classification Algorithms
-
-Four classification algorithms were evaluated, covering the major paradigms of supervised learning (Han, Kamber, & Pei, 2011):
-
-| Algorithm | Paradigm | Key Hyperparameters Used |
-|---|---|---|
-| **Random Forest** | Ensemble (bagged decision trees) | `n_estimators=100`, `max_depth=12`, `random_state=42` |
-| **Decision Tree** | Rule-based / tree induction | `max_depth=10`, `random_state=42` |
-| **k-Nearest Neighbors (k-NN)** | Instance-based / lazy learning | `n_neighbors=7` |
-| **Naïve Bayes** | Probabilistic / generative | `GaussianNB` (default) |
-
-### Python scikit-learn Pipeline (Google Colab)
-
-The Python pipeline follows a standard supervised learning workflow:
-
-1. **Train-Test Split**: 80% training / 20% test, **stratified** by `Spending_Tier` to preserve class balance, `random_state=42` for reproducibility.
-2. **Model Training**: Each model was fit on the scaled, one-hot-encoded training set.
-3. **Evaluation**: Accuracy, Precision, Recall, and F1-Score computed on the held-out 20% test set (8,309 records).
-
-### Orange Data Mining Visual Workflow
-
-The same classification task was replicated in **Orange Data Mining** using the `.ows` workflow file (`DataMining_Capstone.ows`). This provides a no-code, GUI-driven validation of the Python results using **10-fold stratified cross-validation** on the full 41,544-record dataset.
-
-![Orange Workflow](Images/orange_workflow.png)
-
-The Orange workflow consists of eight nodes connected as follows:
-
-- **File** node → loads `fies_cleaned_processed.csv` (41,544 × 16)
-- **File** → feeds data into **Test and Score** (CV evaluation hub) and also directly into **Tree** (for tree model construction)
-- **Random Forest**, **Tree**, **kNN**, **Naive Bayes** → each passes its `Learner` output to **Test and Score**
-- **Tree** → passes its `Model` to **Tree Viewer** (interactive tree visualization)
-- **Test and Score** → `Evaluation Results` feed both **ROC Analysis** and **Confusion Matrix**
-
-The Orange workflow uses:
-- **Random Forest**: `min_samples_split=5`, `max_depth` unconstrained, `n_estimators=10`
-- **Tree**: `max_depth=8`, `min_leaf=2`, `min_internal=100`, `sufficient_majority=95%`
-- **kNN**: `n_neighbors=5`, Euclidean distance
-- **Naive Bayes**: default Gaussian Naive Bayes
-
----
-
-## 5. Model Evaluation & Comparative Results
-
-### Python scikit-learn Results (80/20 Stratified Split — 8,309 Test Records)
-
-```
-=== MODEL PERFORMANCE COMPARISON ===
-        Model  Accuracy  Precision   Recall  F1-Score
-Random Forest  0.843062   0.849584 0.834055  0.841748
-Decision Tree  0.812733   0.813645 0.811688  0.812666
-         k-NN  0.810687   0.847540 0.758057  0.800305
-  Naïve Bayes  0.770490   0.889581 0.618086  0.729388
-```
-
-| Model | Accuracy | Precision | Recall | F1-Score |
-|---|---|---|---|---|
-| **Random Forest** | **84.31%** | **84.96%** | **83.41%** | **84.17%** |
-| Decision Tree | 81.27% | 81.36% | 81.17% | 81.27% |
-| k-NN | 81.07% | 84.75% | 75.81% | 80.03% |
-| Naïve Bayes | 77.05% | 88.96% | 61.81% | 72.94% |
-
-### Orange Data Mining Results (10-Fold Stratified Cross-Validation — 41,544 Records)
-
-The Orange Test and Score widget evaluated all four models using 10-fold stratified cross-validation on the complete dataset, yielding more stable population-level estimates than the hold-out split.
-
-![Orange Test and Score](Images/orange_test_and_score.png)
-
-| Model | AUC | CA (Accuracy) | F1 | Precision | Recall | MCC |
-|---|---|---|---|---|---|---|
-| **Naive Bayes** | **0.921** | 0.838 | 0.838 | 0.839 | 0.838 | 0.677 |
-| **Random Forest** | 0.913 | **0.832** | **0.832** | **0.832** | **0.832** | 0.665 |
-| Tree | 0.901 | 0.824 | 0.824 | 0.824 | 0.824 | 0.647 |
-| kNN | 0.880 | 0.811 | 0.811 | 0.811 | 0.811 | 0.621 |
-
-**Statistical comparison (AUC-based pairwise probabilities):**
-- Naïve Bayes vs. Random Forest: p = 1.000 (Naïve Bayes significantly higher AUC)
-- Random Forest vs. Tree: p = 1.000
-- Random Forest vs. kNN: p = 1.000
-- Naïve Bayes vs. kNN: p = 1.000
-
-### Interpretation: Python vs. Orange Results
-
-The divergence between tools is **expected and methodologically meaningful**:
-
-| Aspect | Python (scikit-learn) | Orange (10-fold CV) |
-|---|---|---|
-| Evaluation strategy | Single 80/20 hold-out split | 10-fold stratified CV |
-| Data used | 33,235 train / 8,309 test | Full 41,544 (CV rotations) |
-| RF hyperparameters | 100 trees, max_depth=12 | 10 trees, min_samples_split=5 |
-| Naïve Bayes result | Lowest F1 (72.94%) | Highest AUC (0.921) |
-
-The Naïve Bayes model achieves the highest AUC (0.921) in Orange's CV evaluation, indicating excellent **rank-ordering / discrimination ability**, but its lower Recall in the Python pipeline (61.81%) reflects a conservative decision boundary under the 80/20 split. Random Forest delivers the most **balanced and consistent** performance across both tools — high accuracy, well-balanced precision/recall, and stable F1 — making it the **recommended production model**.
-
----
-
-## 6. Visual Analysis of Results
-
-### Random Forest Confusion Matrix (Python — scikit-learn)
-
-![Random Forest Confusion Matrix](Images/confusion_matrix.png)
-
-The heatmap shows the classification breakdown on the 20% held-out test set (8,309 records):
-
-| | Predicted: Low Spender | Predicted: High Spender |
-|---|---|---|
-| **Actual: Low Spender** | **3,537** (TN) | 614 (FP) |
-| **Actual: High Spender** | 690 (FN) | **3,468** (TP) |
-
-- **True Positives (TP)**: 3,468 High Spender households correctly classified
-- **True Negatives (TN)**: 3,537 Low Spender households correctly classified
-- **False Positives (FP)**: 614 Low Spenders incorrectly predicted as High Spenders
-- **False Negatives (FN)**: 690 High Spenders incorrectly predicted as Low Spenders
-- **Overall Accuracy**: (3,537 + 3,468) / 8,309 = **84.3%**
-
-The model is well-balanced, with comparable false positive (614) and false negative (690) counts, indicating no systematic directional bias. For FMCG targeting use cases, the low false negative rate (not missing actual High Spenders) is particularly valuable.
-
-### Random Forest Feature Importance (Python — scikit-learn)
-
-![Feature Importance](Images/feature_importance.png)
-
-The Random Forest model identifies the top-10 socio-economic drivers of household personal care spending tier:
-
-| Rank | Feature | Importance Score (approx.) |
-|---|---|---|
-| 1 | Total Household Income | ~0.26 |
-| 2 | Total Food Expenditure | ~0.14 |
-| 3 | Communication Expenditure | ~0.13 |
-| 4 | Housing and water Expenditure | ~0.10 |
-| 5 | Clothing, Footwear and Other Wear Expenditure | ~0.08 |
-| 6 | Transportation Expenditure | ~0.07 |
-| 7 | Restaurant and hotels Expenditure | ~0.06 |
-| 8 | Medical Care Expenditure | ~0.04 |
-| 9 | Special Occasions Expenditure | ~0.03 |
-| 10 | Education Expenditure | ~0.03 |
-
-**Total Household Income** is by far the dominant predictor (importance ~0.26), accounting for more than double the influence of any single other feature. This confirms the boxplot finding from EDA that income level is the primary determinant of personal care spending tier. **Communication Expenditure** ranks third, suggesting that households investing in connectivity (mobile data, internet plans) tend to spend more on personal care — a proxy for urban lifestyle orientation.
-
-### Orange Confusion Matrix (10-Fold CV — Random Forest)
-
-![Orange Confusion Matrix](Images/orange_confusion_matrix.png)
-
-Evaluated on the full 41,544-record dataset via 10-fold cross-validation, the Orange Random Forest confusion matrix shows:
-
-| | Predicted: 0 (Low) | Predicted: 1 (High) | Row Total |
+| Dataset | Source | Coverage | Initial structure |
 |---|---|---|---|
-| **Actual: 0 (Low)** | **17,576** | 3,181 | 20,757 |
-| **Actual: 1 (High)** | 3,792 | **16,995** | 20,787 |
-| **Col Total** | 21,368 | 20,176 | **41,544** |
+| Physical Supply Table for Water Resources | PSA OpenSTAT | 2010–2025 | 224 rows, 12 columns |
+| Physical Use Table for Water Resources | PSA OpenSTAT | 2010–2025 | 208 rows, 12 columns |
+| Industrial Water Withdrawal | Our World in Data (based on FAO AQUASTAT) | 1995–2023 for the Philippines | 6,792 rows, 4 columns (all countries) |
+| Water Accounts of the Philippines | PSA | 2016–2025 | Excel workbook with multiple worksheets |
 
-- **Overall Accuracy**: (17,576 + 16,995) / 41,544 = **83.2%** (consistent with Orange's CA = 0.832)
-- Both classes are classified with similar error rates (3,181 FP vs. 3,792 FN), confirming balanced performance on the full population.
+From the Water Accounts workbook, **Worksheet 3** (water-use efficiency) and **Worksheet 4** (level of water stress) were used, each giving 10 annual observations.
 
-### Orange ROC Analysis
+### Dataset limitations
 
-![Orange ROC Analysis](Images/orange_roc_analysis.png)
-
-The ROC curves for all four models are plotted simultaneously. All curves sit well above the diagonal random-classifier baseline, with **Naïve Bayes** (AUC = 0.921) and **Random Forest** (AUC = 0.913) tracing the highest curves. The steep initial rise in all curves indicates strong discrimination ability at low false positive rates, which is critical for precision-targeted marketing applications.
-
-### Orange Decision Tree Viewer
-
-![Orange Tree Viewer](Images/orange_tree_viewer.png)
-
-The Orange Tree Viewer reveals the top decision logic of the Decision Tree model (max_depth=8). The root-level and first two branching levels demonstrate:
-
-**Root Node**: `Total Household Income`
-- **Left branch** (≤ ₱164,864): → Split again on `Total Household Income` (≤ ₱110,105)
-  - **Far-left** (≤ ₱110,105): → `Total Household Income` (further split, blue-dominant = Low Spender)
-  - **Left-center** (> ₱110,105): → `Communication Expenditure` (mixed, slightly blue)
-- **Right branch** (> ₱164,864): → Split on `Communication Expenditure` (≤ ₱2,790 vs. > ₱2,790)
-  - **Right-center** (≤ ₱2,790): → `Total Food Expenditure` (orange-dominant = High Spender)
-  - **Far-right** (> ₱2,790): → `Total Food Expenditure` (orange-dominant = High Spender)
-
-This tree structure independently confirms the feature importance ranking: **Total Household Income** is the most discriminative single feature, followed by **Communication Expenditure** and **Total Food Expenditure** as secondary splits. High-income households (> ₱164,864/year) with higher communication spending are classified as High Spenders with high confidence.
+- PSA data are national-level; they have no provincial or facility-level detail (e.g., none for New Clark City).
+- The datasets differ in reporting periods, units, and definitions.
+- PSA's industry category combines mining, manufacturing, and construction.
+- The OWID series covers **self-supplied** industrial withdrawal only and may include estimated or imputed historical values.
 
 ---
 
-## 7. Key Insights, Limitations & Recommendations
+## 3. Data Understanding & Preprocessing
 
-### Top Spending Drivers
+### Data understanding (Python/pandas in Colab)
 
-The convergent findings from both Python feature importance analysis and the Orange Decision Tree structure point to a consistent hierarchy of spending drivers:
+- No exact duplicate rows in any of the three CSV datasets. The Philippine OWID subset has 29 records and no repeated years.
+- No negative values. Zero values appear in several PSA accounting columns and in the international OWID data (175 zero withdrawals); they were retained.
+- OWID `Code` column: 391 missing values (about 5.76%). These do not affect the Philippine subset, which is filtered by `Code == "PHL"`.
+- PSA tables contain blank cells that may mean "not applicable" rather than zero. The `Accumulation` column in the supply table is entirely empty, and all 16 `Households` observations in the use table are missing.
+- Worksheets 3 and 4 of the Water Accounts workbook have multi-row headers, which required careful extraction.
 
-1. **Total Household Income** — The single strongest predictor. Personal care and lifestyle spending is fundamentally income-constrained; households below ~₱110,000 annual income are predominantly Low Spenders.
-2. **Total Food Expenditure** — Reflects overall household consumption scale. Households that spend more on food tend to spend more across all discretionary categories.
-3. **Communication Expenditure** — A proxy for urban connectivity and digital lifestyle. High communication spenders skew toward High personal care spending tier.
-4. **Housing and water Expenditure** — Reflects household quality and urban residence, which correlates with access to personal care retail channels.
-5. **Clothing, Footwear and Other Wear Expenditure** — Directly captures fashion and appearance investment, a natural co-predictor of personal care spending.
+### Preprocessing
 
-### Actionable Recommendations for Stakeholders
+| Step | What was done |
+|---|---|
+| Loading PSA CSVs | Semicolon separator, first two rows skipped, `.` and `..` treated as missing |
+| Filtering | OWID data filtered to `PHL` (29 annual observations) |
+| Missing values | Not imputed and not replaced with zero |
+| Standardization | Column names lowercased with underscores; years converted to numeric |
+| Unit handling | Converted only where the unit was confirmed; water stress kept as a decimal and multiplied by 100 for charts only |
+| Integration | Outer join on `year`, sorted chronologically |
+| Common period | **2016–2023** (8 annual observations shared by all five series) used for correlation analysis |
 
-**FMCG & Retail Marketers:**
-- Prioritize households earning above ₱164,864 annually (the Decision Tree's first income split) as the primary High Spender segment for premium personal care product marketing.
-- Target high communication-spend regions (proxied by communication expenditure > ₱2,790) for digital/mobile-first marketing campaigns.
-- Regional one-hot encoding features (though not in the top-10 importances) can be used for geographic market prioritization.
+### Prepared datasets (`Cleaned Datasets/`)
 
-**Consumer Economists & Policy Researchers:**
-- The near-perfect class balance at the ₱6,804 median threshold suggests that personal care spending is a genuinely bimodal distribution at the population level — not a niche luxury category.
-- Albert et al. (2020) note that non-food expenditure is highly vulnerable to income shocks. The strong income dependency found here (~0.26 importance) supports this finding and suggests personal care spending should be monitored as an indicator of household welfare.
+`physical_water_supply_clean.csv`, `physical_water_use_clean.csv`, `philippine_industrial_withdrawal_clean.csv`, `water_use_efficiency_clean.csv`, `water_stress_clean.csv`, `supply_total_annual.csv`, `use_total_annual.csv`, `annual_master_dataset.csv`, `common_period_dataset.csv`, `cleaning_log.csv`, `transformation_log.csv`
 
-### Methodological Limitations
+### Features used
+
+`year`, `total_supply`, `total_use`, `withdrawal_mcm` (industrial withdrawal), `water_used_industry`, `wue_industry`, `wue_overall`, `water_withdrawal_mcm`, `water_stress`.
+
+> **No target variable was created.** The study is not a supervised prediction task, so no classification labels or models were used.
+
+---
+
+## 4. Exploratory Data Analysis
+
+| Indicator | Period | Key result |
+|---|---|---|
+| Total water supply | 2010–2025 | Rose from 581,572 MCM (2010) to 739,393 MCM (2025) |
+| Total water use | 2010–2025 | Same rise; **identical to the supply series every year** (flagged for validation) |
+| Sectoral use | 2010–2025 | Electricity, Gas, Steam & Airconditioning Supply had the highest average (about 123,869 MCM), followed by Agriculture, Forestry and Fishing |
+| Industrial water withdrawal | 1995–2023 | Generally increasing with fluctuations; low 2,296.00 MCM (1995), peak 16,188.80 MCM (2018), sharp drop in 2019 |
+| Industrial water-use efficiency | 2016–2025 | Peak 586.11 PHP/m³ (2019), low 261.47 PHP/m³ (2025) |
+| Sector WUE comparison | 2016–2025 | Services highest, Industry middle, Agriculture lowest |
+| National water stress | 2016–2025 | Low 26.29% (2019), high 31.06% (2025) |
+
+### Figures
+
+![Annual Total Water Supply](Images/annual_total_water_supply.png)
+
+*Figure 1. Annual total water supply in the Philippines (2010–2025).*
+
+![Annual Total Water Use](Images/annual_total_water_use.png)
+
+*Figure 2. Annual total water use in the Philippines (2010–2025).*
+
+![Water Utilization by Sector](Images/water_utilization_by_sector.png)
+
+*Figure 3. Annual water utilization by economic sector (2010–2025).*
+
+![Average Water Utilization by Sector](Images/average_water_utilization_by_sector.png)
+
+*Figure 4. Average water utilization by economic sector.*
+
+![Industrial Water Withdrawal](Images/industrial_water_withdrawal.png)
+
+*Figure 5. Industrial water withdrawal in the Philippines (1995–2023).*
+
+![Industrial Water-Use Efficiency](Images/industrial_wue.png)
+
+*Figure 6. Industrial water-use efficiency (2016–2025).*
+
+![Water-Use Efficiency by Sector](Images/wue_by_sector.png)
+
+*Figure 7. Water-use efficiency by economic sector (2016–2025).*
+
+![National Water Stress](Images/national_water_stress.png)
+
+*Figure 8. National water stress in the Philippines (2016–2025).*
+
+---
+
+## 5. Data Mining Methodology
+
+### Primary technique: IQR-based anomaly detection
+
+Anomaly detection with the Interquartile Range (IQR) method was chosen because the data are numeric, annual, and **unlabelled**, so supervised classification was not appropriate. The IQR method also makes no assumption of normality.
+
+```
+IQR         = Q3 − Q1
+Lower bound = Q1 − 1.5 × IQR
+Upper bound = Q3 + 1.5 × IQR
+```
+
+Any value outside the bounds is flagged as a **potential anomaly**. A flag is a statistical observation, not proof of an error.
+
+### Supporting techniques
+
+| Method | Purpose |
+|---|---|
+| Trend analysis | Show how indicators changed over time |
+| Pearson correlation | Show direction and strength of linear relationships (2016–2023, n = 8) |
+
+### Tools
+
+- **Google Colab (Python):** cleaning, transformation, integration, EDA, IQR analysis, and the main visualizations.
+- **Orange Data Mining:** data inspection and visualization, correlation, and an IQR implementation in Python Script widgets (see Section 6).
+
+---
+
+## 6. Orange Data Mining Workflow
+
+The workflow file is `Water_Resources_DataMining_Architecture.ows`. It has **44 nodes** and **37 links**. It contains no learner, Test and Score, or ROC widgets, because no predictive model was built.
+
+**Inputs (7 File widgets):** Physical Water Use, Physical Water Supply, Annual Master Dataset, National Water Stress, Common Period Dataset, Industrial Water Withdrawal, Water-Use Efficiency.
+
+**Inspection and visualization branches**
+
+| Dataset | Widgets |
+|---|---|
+| Physical Water Use / Supply | File → Select Columns → Data Table, plus Column Statistics and Distributions |
+| Annual Master Dataset | File → Select Columns → Data Table, Column Statistics, Distributions, Line Plot |
+| National Water Stress | File → Select Columns → Data Table, Column Statistics, Distributions |
+| Common Period Dataset | File → Select Columns → Data Table, Column Statistics, Distributions, Scatter Plot, **Correlations** |
+| Industrial Water Withdrawal | File → Select Columns → Data Table, Column Statistics, Distributions, **Box Plot** |
+| Water-Use Efficiency | File → Select Columns → Data Table, Column Statistics, Distributions, **Box Plot** |
+
+**IQR anomaly detection branches**
+
+- Industrial Water Withdrawal → **Python Script** (IQR on `withdrawal_mcm`) → Data Table "Industrial Water Withdrawal IQR Results"
+- Water-Use Efficiency → **Python Script (1)** (IQR on `wue_industry`) → Data Table "WUE IQR Results"
+
+Both scripts compute Q1, Q3, IQR, and the lower and upper bounds with NumPy percentiles, and flag values outside the bounds.
+
+> **Note:** The File widgets store absolute paths from the author's machine (`C:/Users/casug/Downloads/Prepared_Datasets/...`). After cloning, re-point each File widget to the CSV files in `Cleaned Datasets/`.
+
+---
+
+## 7. Results
+
+### 7.1 IQR anomaly detection
+
+| Measure | Industrial Water Withdrawal | Industrial Water-Use Efficiency |
+|---|---|---|
+| Period | 1995–2023 | 2016–2025 |
+| Observations | 29 | 10 |
+| Q1 | 4,424.00 MCM | 366.008 PHP/m³ |
+| Q3 | 9,931.00 MCM | 452.393 PHP/m³ |
+| IQR | 5,507.00 MCM | 86.385 PHP/m³ |
+| Lower boundary | −3,836.50 | 236.430 |
+| Upper boundary | 18,191.50 | 581.971 |
+| Potential anomalies | **0** (0%) | **1** (10%) |
+| Flagged value | none (max 16,188.80 MCM in 2018) | **2019: 586.11 PHP/m³** (about 4.14 above the upper bound) |
+
+![IQR Box Plot, Industrial Withdrawal](Images/iqr_boxplot_industrial_withdrawal.png)
+
+*Figure 9. IQR box plot of industrial water withdrawal.*
+
+![IQR Box Plot, Industrial WUE](Images/iqr_boxplot_industrial_wue.png)
+
+*Figure 10. IQR box plot of industrial water-use efficiency.*
+
+**Interpretation:**
+
+- No withdrawal value fell outside the bounds, even though the series fluctuated, notably around 2017–2019. Having no statistical outliers does not mean the series was stable.
+- The 2019 efficiency value is only slightly above the upper bound. It is a potential anomaly, and the IQR method cannot explain its cause.
+
+### 7.2 Correlation analysis (2016–2023, n = 8)
+
+| Indicator pair | Pearson r | Relationship |
+|---|---|---|
+| Industrial withdrawal ↔ water stress | +0.961 | Strong positive |
+| Industrial water used ↔ water stress | +0.960 | Strong positive |
+| Industrial WUE ↔ water stress | −0.821 | Strong negative |
+| Industrial WUE ↔ industrial withdrawal | −0.896 | Strong negative |
+| Overall WUE ↔ water stress | +0.008 | Almost none |
+| Total supply ↔ overall WUE | +0.800 | Strong positive |
+| Total supply ↔ total use | +1.000 | Perfect (identical series) |
+
+![Correlation Heatmap](Images/correlation_heatmap_2016_2023.png)
+
+*Figure 11. Correlation heatmap of water-related indicators (2016–2023).*
+
+**Cautions when reading these results:**
+
+- Only 8 observations were used, so single years can strongly influence the coefficients.
+- Supply and use are identical in the prepared data, so r = 1.000 is not independent evidence.
+- Industrial withdrawal and industrial water used are nearly identical in several years.
+- Water stress is computed from withdrawals and freshwater resources, so its correlation with withdrawal indicators is partly built into the indicator.
+- These are associations, **not** causation.
+
+---
+
+## 8. Key Findings, Limitations & Recommendations
+
+### Key findings
+
+1. Prepared total supply and total use both rose from 581,572 MCM (2010) to 739,393 MCM (2025), but the two series are identical and need validation against the original PSA records.
+2. Water use differs across sectors; Electricity, Gas, Steam & Airconditioning Supply is the highest-using sector with available values.
+3. Industrial withdrawal generally increased from 1995 to 2023, peaking in 2018.
+4. Industrial water-use efficiency fell after its 2019 peak, reaching its lowest value in 2025. This reflects economic output per m³, not necessarily higher physical consumption.
+5. National water stress was lowest in 2019 (26.29%) and highest in 2025 (31.06%).
+6. IQR detection flagged one potential anomaly (2019 industrial WUE) and none in industrial withdrawal.
+7. Industrial withdrawal and water use moved strongly with water stress, and industrial WUE moved opposite to it, within the 8-year overlap.
+
+### Recommendations (summary)
+
+- **Water-resource management:** keep monitoring freshwater withdrawals and available renewable resources, and strengthen allocation planning across sectors.
+- **Industrial efficiency:** adopt water-efficient processes, recycling and reuse, and regular water-use assessments.
+- **Future industrial development (Pax Silica):** require site-specific water-resource assessments covering local availability, existing demand, and community and ecosystem effects. Sustainable systems such as rainwater harvesting, storage, treatment, and recycling should be considered.
+- **Data management:** keep consistent, well-documented records, validate data before merging sources, and re-check the identical supply/use series.
+
+### Limitations
 
 | Limitation | Implication |
 |---|---|
-| **Cross-sectional survey data** | FIES captures a single point in time; spending patterns may differ across years and economic cycles. |
-| **Self-reported expenditure** | Survey-based income and expenditure data are subject to recall bias and underreporting, particularly for high-income households. |
-| **Regional aggregation** | One-hot encoded Region captures administrative boundaries, not urban/rural granularity within regions. |
-| **Target variable proxy** | "Miscellaneous Goods and Services Expenditure" is a proxy for personal care; it includes non-personal-care items not disaggregated in the FIES. |
-| **Temporal generalizability** | The dataset (Grosven, 2018 Kaggle release) reflects a specific FIES survey year; model performance may degrade on more recent cohorts. |
+| National-level data only | Cannot describe conditions in a specific province or in New Clark City |
+| Different periods, units, and definitions | Limits direct comparability across datasets |
+| Combined mining/manufacturing/construction category | Industry-specific demand cannot be isolated |
+| OWID covers self-supplied withdrawal only | Industrial use via public supply is excluded; some values may be estimated |
+| Identical supply and use series | Possible extraction or accounting-definition issue; unresolved |
+| Small samples (n = 8 for correlation, n = 10 for WUE IQR) | Results are exploratory |
+| IQR flags statistical outliers only | A flag does not establish an error or a cause |
+| Water stress is partly derived from withdrawal | Correlation with withdrawal is partly built-in |
 
 ---
 
-## 8. Tools & Technologies Used
+## 9. Tools & Technologies Used
 
-| Category | Tool / Library | Role in Pipeline |
+| Category | Tool / Library | Role |
 |---|---|---|
-| **Cloud Data Warehouse** | Google BigQuery | SQL querying, schema verification, and in-cloud median-split segmentation |
-| **Programming & Environment** | Python 3, Google Colab | End-to-end preprocessing, feature engineering, model training, and visualization |
-| **Python Data & ML Libraries** | `pandas`, `numpy`, `scikit-learn`, `matplotlib`, `seaborn` | Data cleaning, `StandardScaler`, one-hot encoding, classifier training, and metric plots |
-| **Visual Data Mining Tool** | Orange Data Mining (`.ows`) | No-code workflow validation, 10-fold stratified cross-validation, ROC curves, and Tree Viewer |
-| **Version Control & Hosting** | GitHub | Code, dataset, workflow, and documentation hosting |
+| Programming & environment | Python 3, Google Colab | Cleaning, transformation, integration, EDA, IQR analysis, visualization |
+| Python libraries | `pandas`, `numpy`, `matplotlib`, `seaborn` | Data handling, percentiles/IQR, charts, and correlation heatmap |
+| Visual data mining tool | Orange Data Mining (`.ows`) | File, Select Columns, Data Table, Column Statistics, Distributions, Box Plot, Line Plot, Scatter Plot, Correlations, Python Script |
+| Version control & hosting | GitHub | Code, datasets, workflow, and documentation |
 
 ---
 
-## 9. Instructions for Reproducing the Analysis
+## 10. Instructions for Reproducing the Analysis
 
-1. **Clone or Download the Repository:**
+1. **Clone the repository**
    ```bash
-   git clone [https://github.com/Trish-05/DataMining_Capstone_Biglete.git](https://github.com/Trish-05/DataMining_Capstone_Biglete.git)
-   cd DataMining_Capstone_Biglete
+   git clone https://github.com/c-marcgelo/DMLABCapstone_Casugbo_Milca_Pongos.git
+   cd DMLABCapstone_Casugbo_Milca_Pongos
+   ```
+2. **Obtain the source data.** The raw files are in `Original Datasets/`; the download links are in Section 11.
+3. **Run the notebooks** in Google Colab (`Data Understanding/Philippine_Water_Data_Understanding.ipynb`, `EDA/EXPLORATORY_DATA_ANALYSIS.ipynb`, `Data Mining Models/Data Mining Techniques.ipynb`) to clean, transform, and merge the data and to produce the prepared CSVs and figures. Load PSA CSVs with `sep=";"`, `skiprows=2`, and `na_values=[".", ".."]`. Filter OWID to `Code == "PHL"`.
+4. **Open the Orange workflow:** launch Orange, open `Water_Resources_DataMining_Architecture.ows`, and re-point each File widget to the corresponding CSV in `Cleaned Datasets/`.
+5. **Inspect the IQR results** in the two Data Table widgets fed by the Python Script nodes.
 
-## 10. References
+---
 
-Albert, J. R. G., Abrigo, M. R. M., Quimba, F. M. A., & Vizmanos, J. F. V. (2020). *Poverty, the middle class, and income distribution amid COVID-19* (PIDS Discussion Paper Series No. 2020-22). Philippine Institute for Development Studies. https://pidswebs.pids.gov.ph/CDN/PUBLICATIONS/pidsdps2022.pdf
+## 11. References
 
-Grosven, P. (2018). *Filipino family income and expenditure* [Data set]. Kaggle. https://www.kaggle.com/datasets/grosvenpaul/family-income-and-expenditure
+Food and Agriculture Organization of the United Nations. (2018). *AQUASTAT glossary*. FAO. https://www.fao.org/nr/water/agwa/investment-tools/dti/tool/glossary
 
-Han, J., Kamber, M., & Pei, J. (2011). *Data mining: Concepts and techniques* (3rd ed.). Morgan Kaufmann. https://doi.org/10.1016/C2009-0-61819-5
+Our World in Data. (2026). *Industrial water withdrawal* [Data set]. Based on Food and Agriculture Organization of the United Nations, AQUASTAT. https://ourworldindata.org/grapher/industrial-water-withdrawal
 
-Philippine Statistics Authority. (2023). *Family Income and Expenditure Survey (FIES)*. https://psa.gov.ph/statistics/income-expenditure/fies
+Philippine Information Agency. (2026, August 10). *BCDA clarifies misconceptions on Pax Silica project in New Clark City*. https://pia.gov.ph/news/bcda-clarifies-misconceptions-on-pax-silica-project-in-new-clark-city/
+
+Philippine Statistics Authority. (2026a). *Physical supply table for water resources*. OpenSTAT. https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__3A/0013A5DWPS0.px/
+
+Philippine Statistics Authority. (2026b). *Physical use table for water resources*. OpenSTAT. https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__3A/0023A5DWPU0.px/
+
+Philippine Statistics Authority. (2026c, September 3). *Country's water use efficiency declined to PhP 221.48 per cubic meter in 2025*. https://psa.gov.ph/statistics/environmental-accounts/node/1684084131
